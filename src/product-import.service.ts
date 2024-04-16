@@ -53,13 +53,13 @@ export class ProductImportService implements OnModuleInit{
         if(this.options?.everyThisDay === undefined){
             throw new UserInputError(`You need to configure ProductImportPluginOptions.everyThisOtherDay`)
         }
-        CronExpression.EVERY_5_MINUTES
-        const job = new CronJob("0 */2 * * * *", async () => {
-            this.jobQueue.add({},{retries: 2})
-        });
-        // const job = new CronJob(`0 0 */${this.options.everyThisOtherDay} * *`, async () => {
+        // CronExpression.EVERY_5_MINUTES
+        // const job = new CronJob("0 */2 * * * *", async () => {
         //     this.jobQueue.add({},{retries: 2})
         // });
+        const job = new CronJob(`0 0 */${this.options.everyThisDay} * *`, async () => {
+            this.jobQueue.add({},{retries: 2})
+        });
         this.schedulerRegistry.addCronJob('name', job);
         job.start();
     }

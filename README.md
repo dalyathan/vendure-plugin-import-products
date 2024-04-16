@@ -24,12 +24,14 @@
 ## Getting Started
 
 ```ts
+import {ProductImportPlugin} from "vendure-plugin-import-products";
+
 ProductImportPlugin.init({
     url: `https://tfcmayasoftdata.up.railway.app/allproducts`,
     everyThisDay: 3
 })
 ```
-This mean the products will be imported from the specied urlevery third day
+This means the products will be imported from the specified url every third day. Make sure to run database migrations after including this in your `vendure-config.ts`
 
 
 
