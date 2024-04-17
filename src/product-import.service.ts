@@ -237,13 +237,13 @@ export class ProductImportService implements OnModuleInit{
         let defautVariant= vendureProduct.variants.find((variant)=> variant.sku === remoteProduct.sku);
         let defautVariantPriceInDefaultChannel= defautVariant?.productVariantPrices.find((variantPrice)=> defaultChannel.id === variantPrice.channelId)
         const productVariantRepo= this.connection.getRepository(ctx, ProductVariant);
+        const productRepo= this.connection.getRepository(ctx, Product);
         const productVariantPriceRepo= this.connection.getRepository(ctx, ProductVariantPrice);
         if(defautVariant && defautVariantPriceInDefaultChannel){
-          
             defautVariantPriceInDefaultChannel.price= parseFloat(remoteProduct.price)*100;
-                await this.updateProductVariantName(ctx, defautVariant, defaultChannel.defaultLanguageCode,remoteProduct.name),
-                await productVariantPriceRepo.save(defautVariantPriceInDefaultChannel),
-                await productVariantRepo.save(defautVariant)
+            await this.updateProductVariantName(ctx, defautVariant, defaultChannel.defaultLanguageCode,remoteProduct.name),
+            await productVariantPriceRepo.save(defautVariantPriceInDefaultChannel),
+            await productVariantRepo.save(defautVariant)
         }
         else if(defautVariant){
             defautVariantPriceInDefaultChannel= new ProductVariantPrice();
@@ -256,14 +256,15 @@ export class ProductImportService implements OnModuleInit{
             }else{
                 defautVariant.productVariantPrices=[defautVariantPriceInDefaultChannel]
             }
-                await productVariantPriceRepo.save(defautVariantPriceInDefaultChannel),
-                await productVariantRepo.save(defautVariant),
-                await this.updateProductVariantName(ctx, defautVariant, defaultChannel.defaultLanguageCode,remoteProduct.name)
+            await productVariantPriceRepo.save(defautVariantPriceInDefaultChannel),
+            await productVariantRepo.save(defautVariant),
+            await this.updateProductVariantName(ctx, defautVariant, defaultChannel.defaultLanguageCode,remoteProduct.name)
         }
         else{
             // we need to create a default variant
             defautVariant= await this.createProductVariant(ctx, vendureProduct.id,remoteProduct,defaultChannel.defaultLanguageCode)
             vendureProduct.variants.push(defautVariant)
+            await productRepo.save(vendureProduct)
         }
         return defautVariant;
     }
