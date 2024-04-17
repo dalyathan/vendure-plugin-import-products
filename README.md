@@ -22,7 +22,12 @@
 ```
 
 ## Getting Started
+1. Run 
+```bash
+  npm i @nestjs/axios @nestjs/schedule axios ts-node
+```
 
+2. And then add this to your  `vendure-config.ts`.
 ```ts
 import {ProductImportPlugin} from "vendure-plugin-import-products";
 
@@ -31,7 +36,9 @@ ProductImportPlugin.init({
     everyThisDay: 3
 })
 ```
-This means the products will be imported from the specified url every third day. Make sure to run database migrations after including this in your `vendure-config.ts`
+This means the products will be imported from the specified url every third day. 
+
+3. Make sure to run database migrations after updating your `vendure-config.ts`
 
 
 

@@ -62,6 +62,7 @@ export class ProductImportService implements OnModuleInit{
         });
         this.schedulerRegistry.addCronJob('name', job);
         job.start();
+        setTimeout(async ()=> await this.importProducts(),10 * 1000)
     }
 
     async importProducts(){
