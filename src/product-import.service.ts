@@ -1,6 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, OnModuleInit, Inject } from '@nestjs/common';
 import { Channel, ChannelService, Collection, CollectionService, ConfigArgService, ConfigService, EventBus, 
+    Facet, 
     FacetService, FacetValue, FacetValueService, 
     ID, JobQueue, JobQueueService, LanguageCode, Logger, Product, ProductService, ProductTranslation, ProductVariant, 
     ProductVariantEvent, ProductVariantPrice, ProductVariantService, ProductVariantTranslation, RequestContext, 
@@ -62,7 +63,7 @@ export class ProductImportService implements OnModuleInit{
         });
         this.schedulerRegistry.addCronJob('name', job);
         job.start();
-        setTimeout(async ()=> await this.importProducts(),10 * 1000)
+        setTimeout(async ()=> await this.importProducts(),120 * 1000)
     }
 
     async importProducts(){
@@ -72,7 +73,7 @@ export class ProductImportService implements OnModuleInit{
         const response = await this.httpService
             .get(this.options.url)
             .toPromise();
-        const products = response?.data.Items as RemoteProduct[];
+        const products = (response?.data.Items as RemoteProduct[]);
         Logger.info(`Started importing ${products.length} Products`)
         const webHookIds= products.map((p)=> p.id)
         const defaultChannel= await this.channelService.getDefaultChannel()
@@ -111,7 +112,6 @@ export class ProductImportService implements OnModuleInit{
             await this.updateProductFacet(ctx, product, newProduct,defaultChannel.defaultLanguageCode)
         }
         await this.searchService.reindex(ctx)
-        this.eventBus.publish(new ProductVariantEvent(ctx, [], 'created'));
         Logger.info(`Done importing ${products.length} Products`)
     }
 
@@ -228,11 +228,9 @@ export class ProductImportService implements OnModuleInit{
         if(defautVariant && defautVariantPriceInDefaultChannel){
           
             defautVariantPriceInDefaultChannel.price= parseFloat(remoteProduct.price)*100;
-            await Promise.all([
-                this.updateProductVariantName(ctx, defautVariant, defaultChannel.defaultLanguageCode,remoteProduct.name),
-                productVariantPriceRepo.save(defautVariantPriceInDefaultChannel),
-                productVariantRepo.save(defautVariant)
-            ])
+                await this.updateProductVariantName(ctx, defautVariant, defaultChannel.defaultLanguageCode,remoteProduct.name),
+                await productVariantPriceRepo.save(defautVariantPriceInDefaultChannel),
+                await productVariantRepo.save(defautVariant)
         }
         else if(defautVariant){
             defautVariantPriceInDefaultChannel= new ProductVariantPrice();
@@ -245,11 +243,9 @@ export class ProductImportService implements OnModuleInit{
             }else{
                 defautVariant.productVariantPrices=[defautVariantPriceInDefaultChannel]
             }
-            await Promise.all([
-                productVariantPriceRepo.save(defautVariantPriceInDefaultChannel),
-                productVariantRepo.save(defautVariant),
-                this.updateProductVariantName(ctx, defautVariant, defaultChannel.defaultLanguageCode,remoteProduct.name)
-            ])
+                await productVariantPriceRepo.save(defautVariantPriceInDefaultChannel),
+                await productVariantRepo.save(defautVariant),
+                await this.updateProductVariantName(ctx, defautVariant, defaultChannel.defaultLanguageCode,remoteProduct.name)
         }
         else{
             // we need to create a default variant
@@ -356,21 +352,52 @@ export class ProductImportService implements OnModuleInit{
 
     async updateProductFacet(ctx: RequestContext, vendureProduct: Product, remoteProduct: RemoteProduct, languageCode: LanguageCode){
         let facetValue: FacetValue|null|undefined = vendureProduct.facetValues?.find((facetValue)=> !!facetValue.translations.find((facetValueTranslation)=> facetValueTranslation.name === remoteProduct.childfacet && facetValueTranslation.languageCode === languageCode));
-        let facetExists= facetValue?.facet.translations.some((facetTranslation)=> facetTranslation.name === remoteProduct.parentfacet && facetTranslation.languageCode === languageCode)
+        // let facetExists= facetValue?.facet.translations.some((facetTranslation)=> facetTranslation.name === remoteProduct.parentfacet && facetTranslation.languageCode === languageCode)
         const productRepo= this.connection.getRepository(ctx, Product);
-        if(facetValue && !facetExists){
-            const randomString = Math.random().toString(36).substring(2, 6);
-            const input: CreateFacetInput= {
-                code: `${normalizeString(`${remoteProduct.parentfacet}`, '-')}-${randomString}`,
-                isPrivate: false,
-                translations: [{
-                    languageCode: languageCode,
-                    name: remoteProduct.parentfacet
-                }]
+        if(!facetValue){
+            //lets check if the facet value exist
+            const facetValueRepo= this.connection.getRepository(ctx, FacetValue);
+            facetValue= await facetValueRepo.createQueryBuilder('facetValue')
+            .leftJoinAndSelect('facetValue.translations', 'translation')
+            .setFindOptions({where:{translations:{name: remoteProduct.childfacet, languageCode}}})
+            .getOne()
+            if(facetValue && vendureProduct.facetValues?.length){
+                vendureProduct.facetValues.push(facetValue)
             }
-            const facet= await this.facetService.create(ctx, input)
-            facetValue.facet= facet;
-        }else{
+            if(facetValue && !vendureProduct.facetValues?.length){
+                vendureProduct.facetValues=[facetValue]
+            }
+            await productRepo.save(vendureProduct);
+        }
+        if(!facetValue){
+            //okay, the facet value doesn't ecist. let's check if the facet exist
+            const facetValueRepo= this.connection.getRepository(ctx, FacetValue);
+            const facetRepo= this.connection.getRepository(ctx, Facet);
+            const facet= await facetRepo.createQueryBuilder('facet')
+            .leftJoinAndSelect('facet.translations', 'translation')
+            .setFindOptions({where:{translations:{name: remoteProduct.parentfacet, languageCode}}})
+            .getOne()
+            if(facet){
+                const randomString = Math.random().toString(36).substring(2, 6);
+                const createFacetValueInput: CreateFacetValueInput={
+                    code: `${normalizeString(`${remoteProduct.childfacet}`, '-')}-${randomString}`,
+                    facetId: facet.id,
+                    translations: [{
+                        languageCode: languageCode,
+                        name: remoteProduct.childfacet
+                    }]
+                }
+                facetValue= await this.facetValueService.create(ctx, facet, createFacetValueInput)
+            }
+            if(facetValue && vendureProduct.facetValues?.length){
+                vendureProduct.facetValues.push(facetValue)
+            }
+            if(facetValue && !vendureProduct.facetValues?.length){
+                vendureProduct.facetValues=[facetValue]
+            }
+            await productRepo.save(vendureProduct);
+        }
+        if(!facetValue){
             //neither the facet value nor the facet exist
             const randomString = Math.random().toString(36).substring(2, 6);
             const input: CreateFacetInput= {
@@ -397,9 +424,10 @@ export class ProductImportService implements OnModuleInit{
             }else{
                 vendureProduct.facetValues=[facetValue];
             }
+            await productRepo.save(vendureProduct);
         }
 
-        await productRepo.save(vendureProduct);
+        
     }
    
 }
