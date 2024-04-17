@@ -3,7 +3,7 @@ import { Injectable, OnModuleInit, Inject } from '@nestjs/common';
 import { Channel, ChannelService, Collection, CollectionService, ConfigArgService, ConfigService, EventBus, 
     Facet, 
     FacetService, FacetValue, FacetValueService, 
-    ID, JobQueue, JobQueueService, LanguageCode, Logger, Product, ProductService, ProductTranslation, ProductVariant, 
+    ID, JobQueue, JobQueueService, LanguageCode, Logger, ProcessContext, Product, ProductService, ProductTranslation, ProductVariant, 
     ProductVariantEvent, ProductVariantPrice, ProductVariantService, ProductVariantTranslation, RequestContext, 
     SearchService, TaxCategoryService, TransactionalConnection, TranslatableSaver, UserInputError, variantIdCollectionFilter } from '@vendure/core';
 import { getSuperadminContext } from './get-superadmin-context';
@@ -36,6 +36,7 @@ export class ProductImportService implements OnModuleInit{
         private taxCategoryService: TaxCategoryService,
         private connection: TransactionalConnection, 
         private eventBus: EventBus,
+        private processContext: ProcessContext,
         private collectionService: CollectionService, 
         private schedulerRegistry: SchedulerRegistry,
         private jobQueueService: JobQueueService,
@@ -63,7 +64,9 @@ export class ProductImportService implements OnModuleInit{
         });
         this.schedulerRegistry.addCronJob('name', job);
         job.start();
-        setTimeout(async ()=> await this.importProducts(),120 * 1000)
+        if(this.processContext.isWorker){
+            setTimeout(async ()=> await this.importProducts(),120 * 1000)
+        }
     }
 
     async importProducts(){
@@ -112,6 +115,7 @@ export class ProductImportService implements OnModuleInit{
             await this.updateProductFacet(ctx, product, newProduct,defaultChannel.defaultLanguageCode)
         }
         await this.searchService.reindex(ctx)
+        this.eventBus.publish(new ProductVariantEvent(ctx, [], 'created'))
         Logger.info(`Done importing ${products.length} Products`)
     }
 
