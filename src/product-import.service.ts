@@ -162,14 +162,16 @@ export class ProductImportService implements OnModuleInit{
         const productTranslationRepo= this.connection.getRepository(ctx, ProductTranslation);
         vendureProduct.customFields.unit= remoteProduct.unit
         if(translation){
+            const randomString = Math.random().toString(36).substring(2, 6);
             translation.name= remoteProduct.name
-            translation.slug= normalizeString(`${remoteProduct.name}`, '-')
+            translation.slug= `${normalizeString(`${remoteProduct.name}`, '-')}-${randomString}`
         }else{
+            const randomString = Math.random().toString(36).substring(2, 6);
             translation= new ProductTranslation()
             translation.languageCode= languageCode;
             translation.base= vendureProduct;
             translation.name= remoteProduct.name
-            translation.slug= normalizeString(`${remoteProduct.name}`, '-')
+            translation.slug= `${normalizeString(`${remoteProduct.name}`, '-')}-${randomString}`
             vendureProduct.translations.push(translation)
         }
         await productTranslationRepo.save(translation)
@@ -192,12 +194,13 @@ export class ProductImportService implements OnModuleInit{
 
     async createProduct(ctx: RequestContext,newProduct: RemoteProduct, languageCode: LanguageCode){
         //if a product doesn't exist, so wont its variant
+        const randomString = Math.random().toString(36).substring(2, 6);
         const createProductInput: CreateProductInput={
             translations: [{
                 languageCode,
                 description: '',
                 name: newProduct.name,
-                slug: normalizeString(`${newProduct.name}`, '-')
+                slug:`${normalizeString(`${newProduct.name}`, '-')}-${randomString}`
             }],
             customFields:{
                 webhookId: newProduct.id,
@@ -330,13 +333,14 @@ export class ProductImportService implements OnModuleInit{
         }
         if(!collection){
             //in this case the collection doesn't exist
+            const randomString = Math.random().toString(36).substring(2, 6);
             const input: CreateCollectionInput= {
                 filters: [collectionFilterInput],
                 translations: [{
                     description: '',
                     languageCode: languageCode,
                     name: remoteProductCollection,
-                    slug:  normalizeString(`${remoteProductCollection}`, '-')
+                    slug:  `${normalizeString(`${remoteProductCollection}`, '-')}-${randomString}`
                 }]
             }
             collection = await this.collectionService.create(ctx, input);
@@ -355,8 +359,9 @@ export class ProductImportService implements OnModuleInit{
         let facetExists= facetValue?.facet.translations.some((facetTranslation)=> facetTranslation.name === remoteProduct.parentfacet && facetTranslation.languageCode === languageCode)
         const productRepo= this.connection.getRepository(ctx, Product);
         if(facetValue && !facetExists){
+            const randomString = Math.random().toString(36).substring(2, 6);
             const input: CreateFacetInput= {
-                code: normalizeString(`${remoteProduct.parentfacet}`, '-'),
+                code: `${normalizeString(`${remoteProduct.parentfacet}`, '-')}-${randomString}`,
                 isPrivate: false,
                 translations: [{
                     languageCode: languageCode,
@@ -367,8 +372,9 @@ export class ProductImportService implements OnModuleInit{
             facetValue.facet= facet;
         }else{
             //neither the facet value nor the facet exist
+            const randomString = Math.random().toString(36).substring(2, 6);
             const input: CreateFacetInput= {
-                code: normalizeString(`${remoteProduct.parentfacet}`, '-'),
+                code: `${normalizeString(`${remoteProduct.parentfacet}`, '-')}-${randomString}`,
                 isPrivate: false,
                 translations: [{
                     languageCode: languageCode,
@@ -376,8 +382,9 @@ export class ProductImportService implements OnModuleInit{
                 }]
             }
             const facet= await this.facetService.create(ctx, input)
+            const anotherRandomString = Math.random().toString(36).substring(2, 6);
             const createFacetValueInput: CreateFacetValueInput={
-                code: normalizeString(`${remoteProduct.childfacet}`, '-'),
+                code: `${normalizeString(`${remoteProduct.childfacet}`, '-')}-${anotherRandomString}`,
                 facetId: facet.id,
                 translations: [{
                     languageCode: languageCode,
