@@ -8,7 +8,7 @@ import { Channel, ChannelService, Collection, CollectionService, ConfigArgServic
     SearchService, TaxCategoryService, TransactionalConnection, TranslatableSaver, UserInputError, variantIdCollectionFilter } from '@vendure/core';
 import { getSuperadminContext } from './get-superadmin-context';
 import { RemoteProduct } from './types';
-import {In} from 'typeorm';
+import {In, IsNull} from 'typeorm';
 import { normalizeString } from '@vendure/common/lib/normalize-string';
 import {CreateCollectionInput, ConfigurableOperationInput, CreateFacetInput, 
     CreateFacetValueInput, CreateProductInput, CreateProductVariantInput} from '@vendure/common/lib/generated-types'
@@ -157,7 +157,16 @@ export class ProductImportService implements OnModuleInit{
         .leftJoin('variant.collections','collection')
         .leftJoin('variant.translations','variantTranslations')
         .leftJoin('collection.translations','collectionTranslation')
-        .setFindOptions({where: {customFields: {webhookId: In(webHookIds)}}})
+        .setFindOptions({
+            where: {
+                customFields: {
+                    webhookId: In(webHookIds)
+                }, 
+                deletedAt: IsNull(), 
+                variants:{
+                    deletedAt: IsNull(),
+                },
+            }})
         .getMany()
     }
 
