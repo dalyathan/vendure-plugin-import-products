@@ -5,7 +5,7 @@ import { Channel, ChannelService, Collection, CollectionService, ConfigArgServic
     FacetService, FacetValue, FacetValueService, 
     ID, JobQueue, JobQueueService, LanguageCode, Logger, ProcessContext, Product, ProductService, ProductTranslation, ProductVariant, 
     ProductVariantEvent, ProductVariantPrice, ProductVariantService, ProductVariantTranslation, RequestContext, 
-    SearchService, TaxCategoryService, TransactionalConnection, TranslatableSaver, UserInputError, variantIdCollectionFilter } from '@vendure/core';
+    SearchService, StockLocationService, StockMovementService, TaxCategoryService, TransactionalConnection, TranslatableSaver, UserInputError, variantIdCollectionFilter } from '@vendure/core';
 import { getSuperadminContext } from './get-superadmin-context';
 import { RemoteProduct } from './types';
 import {In, IsNull} from 'typeorm';
@@ -29,6 +29,7 @@ export class ProductImportService implements OnModuleInit{
         private productVariantService: ProductVariantService,
         private configArgService: ConfigArgService,
         private facetService: FacetService,
+        private stockLocationService: StockLocationService,
         private facetValueService: FacetValueService,
         private translatableSaver: TranslatableSaver,
         private searchService: SearchService,
@@ -40,6 +41,7 @@ export class ProductImportService implements OnModuleInit{
         private collectionService: CollectionService, 
         private schedulerRegistry: SchedulerRegistry,
         private jobQueueService: JobQueueService,
+        private stockMovementService: StockMovementService,
         @Inject(PLUGIN_INIT_OPTIONS) private readonly options: ProductImportPluginOptions,
         private configService: ConfigService){
 
@@ -272,8 +274,9 @@ export class ProductImportService implements OnModuleInit{
     async createProductVariant(ctx: RequestContext, productId: ID,remoteProduct: RemoteProduct, languageCode: LanguageCode){
         const taxCategories = await this.taxCategoryService.findAll(ctx);
         const  taxCategory = taxCategories.items.find(t => t.isDefault === true) ?? taxCategories.items[0];
+        const defaultStockLocation= await this.stockLocationService.defaultStockLocation(ctx)
         const createProductVariantInput: CreateProductVariantInput={
-            productId: productId,
+            productId,
             sku: remoteProduct.sku,
             taxCategoryId: taxCategory.id,
             translations: [{
@@ -281,7 +284,6 @@ export class ProductImportService implements OnModuleInit{
                 name: remoteProduct.name,
             }],
             price: parseFloat(remoteProduct.price)*100,
-            stockOnHand: NEW_VARIANT_STOCK_VALUE
         }
         const inputWithoutPrice = {
             ...createProductVariantInput,
@@ -302,7 +304,16 @@ export class ProductImportService implements OnModuleInit{
                 taxCategoryId: createProductVariantInput.taxCategoryId,
             },
         });
-        await this.productVariantService.createOrUpdateProductVariantPrice(ctx, createdVariant.id, createProductVariantInput.price!, ctx.channelId);
+        await Promise.all([
+        this.productVariantService.createOrUpdateProductVariantPrice(ctx, createdVariant.id, createProductVariantInput.price??0, ctx.channelId),
+        this.stockMovementService.adjustProductVariantStock(
+            ctx,
+            createdVariant.id,
+            [{
+                stockLocationId: defaultStockLocation.id,
+                stockOnHand: NEW_VARIANT_STOCK_VALUE
+            }]
+        )]);
         return createdVariant
     }
 

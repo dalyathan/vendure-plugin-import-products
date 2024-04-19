@@ -56,7 +56,6 @@ import { ProductImportPlugin } from '../dist/plugin';
           port: 5001,
           route: 'admin',
           adminUiConfig: {
-            brand: 'MCR Markets',
             hideVendureBranding: true,
             hideVersion: true,
           },
