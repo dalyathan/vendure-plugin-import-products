@@ -238,11 +238,12 @@ export class ProductImportService implements OnModuleInit{
     async updateDefaultVariant(ctx: RequestContext, vendureProduct: Product, defaultChannel: Channel, remoteProduct: RemoteProduct):Promise<ProductVariant>{
         let defautVariant= vendureProduct.variants.find((variant)=> variant.sku === remoteProduct.sku);
         let defautVariantPriceInDefaultChannel= defautVariant?.productVariantPrices.find((variantPrice)=> defaultChannel.id === variantPrice.channelId)
+        let moneyStrategy= this.configService.entityOptions.moneyStrategy;
         const productVariantRepo= this.connection.getRepository(ctx, ProductVariant);
         const productRepo= this.connection.getRepository(ctx, Product);
         const productVariantPriceRepo= this.connection.getRepository(ctx, ProductVariantPrice);
         if(defautVariant && defautVariantPriceInDefaultChannel){
-            defautVariantPriceInDefaultChannel.price= parseFloat(remoteProduct.price)*100;
+            defautVariantPriceInDefaultChannel.price= moneyStrategy.round(parseFloat(remoteProduct.price)*100);
             await this.updateProductVariantName(ctx, defautVariant, defaultChannel.defaultLanguageCode,remoteProduct.name),
             await productVariantPriceRepo.save(defautVariantPriceInDefaultChannel),
             await productVariantRepo.save(defautVariant)
