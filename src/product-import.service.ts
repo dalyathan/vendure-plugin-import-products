@@ -57,7 +57,7 @@ export class ProductImportService implements OnModuleInit{
         if(this.options?.everyThisDay === undefined){
             throw new UserInputError(`You need to configure ProductImportPluginOptions.everyThisOtherDay`)
         }
-        // CronExpression.EVERY_5_MINUTES
+        CronExpression.EVERY_5_MINUTES
         // const job = new CronJob("0 */2 * * * *", async () => {
         //     this.jobQueue.add({},{retries: 2})
         // });
@@ -238,7 +238,7 @@ export class ProductImportService implements OnModuleInit{
     async updateDefaultVariant(ctx: RequestContext, vendureProduct: Product, defaultChannel: Channel, remoteProduct: RemoteProduct):Promise<ProductVariant>{
         let defautVariant= vendureProduct.variants.find((variant)=> variant.sku === remoteProduct.sku);
         let defautVariantPriceInDefaultChannel= defautVariant?.productVariantPrices.find((variantPrice)=> defaultChannel.id === variantPrice.channelId)
-        let moneyStrategy= this.configService.entityOptions.moneyStrategy;
+        const moneyStrategy= this.configService.entityOptions.moneyStrategy;
         const productVariantRepo= this.connection.getRepository(ctx, ProductVariant);
         const productRepo= this.connection.getRepository(ctx, Product);
         const productVariantPriceRepo= this.connection.getRepository(ctx, ProductVariantPrice);
@@ -252,7 +252,7 @@ export class ProductImportService implements OnModuleInit{
             defautVariantPriceInDefaultChannel= new ProductVariantPrice();
             defautVariantPriceInDefaultChannel.channelId= defaultChannel.id;
             defautVariantPriceInDefaultChannel.currencyCode= defaultChannel.defaultCurrencyCode;
-            defautVariantPriceInDefaultChannel.price= parseFloat(remoteProduct.price)*100;;
+            defautVariantPriceInDefaultChannel.price=  moneyStrategy.round(parseFloat(remoteProduct.price)*100);
             defautVariantPriceInDefaultChannel.variant= defautVariant;
             if(defautVariant?.productVariantPrices?.length){
                 defautVariant.productVariantPrices.push(defautVariantPriceInDefaultChannel)
@@ -276,6 +276,7 @@ export class ProductImportService implements OnModuleInit{
         const taxCategories = await this.taxCategoryService.findAll(ctx);
         const  taxCategory = taxCategories.items.find(t => t.isDefault === true) ?? taxCategories.items[0];
         const defaultStockLocation= await this.stockLocationService.defaultStockLocation(ctx)
+        const moneyStrategy= this.configService.entityOptions.moneyStrategy;
         const createProductVariantInput: CreateProductVariantInput={
             productId,
             sku: remoteProduct.sku,
@@ -284,7 +285,7 @@ export class ProductImportService implements OnModuleInit{
                 languageCode,
                 name: remoteProduct.name,
             }],
-            price: parseFloat(remoteProduct.price)*100,
+            price: moneyStrategy.round(parseFloat(remoteProduct.price)*100),
         }
         const inputWithoutPrice = {
             ...createProductVariantInput,
