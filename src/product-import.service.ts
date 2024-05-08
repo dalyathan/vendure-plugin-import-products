@@ -133,6 +133,7 @@ export class ProductImportService implements OnModuleInit{
                 .addSelect('product.id')
                 .addSelect('product.customFields.webhookId')
                 .addSelect('product.customFields.unit')
+                .addSelect('product.customFields.measurement')
             .addSelect('productVariantPrices.id')
             .addSelect('productVariantPrices.price')
             .addSelect('productVariantPrices.channelId')
@@ -176,6 +177,7 @@ export class ProductImportService implements OnModuleInit{
         let translation= vendureProduct.translations.find((tr)=> languageCode === tr.languageCode)
         const productTranslationRepo= this.connection.getRepository(ctx, ProductTranslation);
         vendureProduct.customFields.unit= remoteProduct.unit
+        vendureProduct.customFields.measurement= remoteProduct.measurement
         if(translation){
             const randomString = Math.random().toString(36).substring(2, 6);
             translation.name= remoteProduct.name
@@ -219,7 +221,8 @@ export class ProductImportService implements OnModuleInit{
             }],
             customFields:{
                 webhookId: newProduct.id,
-                unit: newProduct.unit
+                unit: newProduct.unit,
+                measurement: newProduct.measurement
             }
         }
         const product = await this.translatableSaver.create({

@@ -9,6 +9,7 @@ declare module '@vendure/core/dist/entity/custom-entity-fields' {
     interface CustomProductFields {
         webhookId: string;
         unit: string
+        measurement: string
     }
 }
 
@@ -22,4 +23,5 @@ export type RemoteProduct={
     parentfacet: string
     childfacet: string
     unit: string
+    measurement: string
 }

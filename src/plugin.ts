@@ -29,11 +29,21 @@ export interface ProductImportPluginOptions {
             }]
         })
         config.customFields.Product.push({
-          name: 'unit',
+            name: 'unit',
+            type: 'string',
+            defaultValue: '',
+            label: [{
+                languageCode: LanguageCode.en,
+                value: 'Unit'
+            }]
+        })
+        config.customFields.Product.push({
+          name: 'measurement',
           type: 'string',
+          defaultValue: '',
           label: [{
               languageCode: LanguageCode.en,
-              value: 'Unit'
+              value: 'Measurement'
           }]
       })
         return config
