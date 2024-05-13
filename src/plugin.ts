@@ -32,15 +32,17 @@ export interface ProductImportPluginOptions {
             name: 'unit',
             type: 'string',
             defaultValue: '',
+            readonly: true,
             label: [{
                 languageCode: LanguageCode.en,
                 value: 'Unit'
             }]
         })
         config.customFields.Product.push({
-          name: 'measurement',
+          name: 'Measurement',
           type: 'string',
           defaultValue: '',
+          readonly: true,
           label: [{
               languageCode: LanguageCode.en,
               value: 'Measurement'
